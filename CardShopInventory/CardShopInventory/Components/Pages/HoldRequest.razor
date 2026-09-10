@@ -1,0 +1,111 @@
+﻿@page "/hold/{CardId:int}"
+@using System.ComponentModel.DataAnnotations
+@using CardShopInventory.Models
+@using CardShopInventory.Services
+@inject ICardService CardService
+@inject IReservationService ReservationService
+@rendermode InteractiveServer
+
+<PageTitle>Request Hold</PageTitle>
+
+@if (card is null && !notFound)
+{
+    <p><em>Loading...</em></p>
+}
+else if (notFound)
+{
+    <p>Card not found.</p>
+    <a href="/">Back to inventory</a>
+}
+else if (submitted)
+{
+    <div class="alert alert-success">
+        Your hold request for <strong>@card!.Name</strong> has been submitted. The shop will contact you at
+        <strong>@Input.CustomerContact</strong> to confirm.
+    </div>
+    <a href="/" class="btn btn-secondary">Back to inventory</a>
+}
+else
+{
+    <h1>Request Hold</h1>
+    <div class="mb-3">
+        @if (!string.IsNullOrEmpty(card!.ImagePath))
+        {
+            <img src="@card.ImagePath" style="height:120px" alt="@card.Name" />
+        }
+        <h4>@card.Name</h4>
+        <p>@card.SetName #@card.CardNumber &mdash; @card.Condition</p>
+        <p>Price: @card.Price.ToString("C") | In stock: @card.Quantity</p>
+    </div>
+
+    <EditForm Model="Input" OnValidSubmit="Submit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Your Name</label>
+            <InputText class="form-control" @bind-Value="Input.CustomerName" />
+        </div>
+        <div class="mb-3">
+            <label>Phone or Email</label>
+            <InputText class="form-control" @bind-Value="Input.CustomerContact" />
+        </div>
+        <div class="mb-3">
+            <label>Quantity</label>
+            <InputNumber class="form-control" @bind-Value="Input.Quantity" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <button class="btn btn-primary" type="submit">Submit Hold Request</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int CardId { get; set; }
+
+    private Card? card;
+    private bool notFound;
+    private bool submitted;
+    private string? errorMessage;
+    private HoldInput Input = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        card = await CardService.GetByIdAsync(CardId);
+        if (card is null)
+        {
+            notFound = true;
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (card is null) return;
+
+        if (Input.Quantity > card.Quantity)
+        {
+            errorMessage = $"Only {card.Quantity} in stock.";
+            return;
+        }
+
+        await ReservationService.CreateAsync(card.Id, Input.CustomerName, Input.CustomerContact, Input.Quantity);
+        submitted = true;
+    }
+
+    private class HoldInput
+    {
+        [Required, StringLength(100)]
+        public string CustomerName { get; set; } = string.Empty;
+
+        [Required, StringLength(150)]
+        public string CustomerContact { get; set; } = string.Empty;
+
+        [Range(1, 1000)]
+        public int Quantity { get; set; } = 1;
+    }
+}

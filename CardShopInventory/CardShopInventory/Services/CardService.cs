@@ -64,6 +64,6 @@ public class CardService : ICardService
         }
 
         context.Cards.Remove(card);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(); 
     }
 }

@@ -1,0 +1,70 @@
+﻿@page "/admin/reservations"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using CardShopInventory.Models
+@using CardShopInventory.Services
+@inject IReservationService ReservationService
+@rendermode InteractiveServer
+
+<PageTitle>Hold Requests</PageTitle>
+
+<h1>Hold Requests</h1>
+
+@if (reservations is null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (reservations.Count == 0)
+{
+    <p>No hold requests.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Requested</th>
+                <th>Card</th>
+                <th>Customer</th>
+                <th>Contact</th>
+                <th>Qty</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in reservations)
+            {
+                <tr>
+                    <td>@r.RequestedAt.ToLocalTime().ToString("g")</td>
+                    <td>@r.Card?.Name</td>
+                    <td>@r.CustomerName</td>
+                    <td>@r.CustomerContact</td>
+                    <td>@r.Quantity</td>
+                    <td>@r.Status</td>
+                    <td>
+                        @if (r.Status == ReservationStatus.Pending)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => SetStatus(r.Id, ReservationStatus.Fulfilled)">Fulfill</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => SetStatus(r.Id, ReservationStatus.Cancelled)">Cancel</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Reservation>? reservations;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load() => reservations = await ReservationService.GetAllAsync();
+
+    private async Task SetStatus(int id, ReservationStatus status)
+    {
+        await ReservationService.UpdateStatusAsync(id, status);
+        await Load();
+    }
+}

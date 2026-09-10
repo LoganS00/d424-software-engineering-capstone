@@ -1,0 +1,95 @@
+﻿@page "/setup"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using CardShopInventory.Services
+@inject IAdminAccountService AdminAccountService
+@inject NavigationManager Nav
+
+<PageTitle>Initial Setup</PageTitle>
+
+<h1>Create Admin Account</h1>
+<p>No admin account exists yet. Create one now to continue.</p>
+
+<EditForm Model="Input" method="post" FormName="Setup" OnValidSubmit="HandleSetup">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Admin Username</label>
+        <InputText class="form-control" @bind-Value="Input.Username" />
+    </div>
+    <div class="mb-3">
+        <label>Password</label>
+        <InputText type="password" class="form-control" @bind-Value="Input.Password" />
+    </div>
+    <div class="mb-3">
+        <label>Confirm Password</label>
+        <InputText type="password" class="form-control" @bind-Value="Input.ConfirmPassword" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <button class="btn btn-primary" type="submit">Create Admin Account</button>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AdminAccountService.AdminExistsAsync())
+        {
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private async Task HandleSetup()
+    {
+        if (await AdminAccountService.AdminExistsAsync())
+        {
+            errorMessage = "An admin account already exists.";
+            return;
+        }
+
+        if (Input.Password != Input.ConfirmPassword)
+        {
+            errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        await AdminAccountService.CreateAdminAsync(Input.Username, Input.Password);
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, Input.Username),
+            new(ClaimTypes.Role, "Admin"),
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+
+    private class InputModel
+    {
+        [Required, StringLength(50, MinimumLength = 3)]
+        public string Username { get; set; } = string.Empty;
+
+        [Required, StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

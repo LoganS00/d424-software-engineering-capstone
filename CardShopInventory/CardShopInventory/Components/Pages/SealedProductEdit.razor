@@ -1,0 +1,138 @@
+﻿@page "/product/new"
+@page "/product/{Id:int}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using CardShopInventory.Models
+@using CardShopInventory.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject ISealedProductService ProductService
+@inject IWebHostEnvironment Env
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>@(Id is null ? "Add Sealed Product" : "Edit Sealed Product")</PageTitle>
+
+@if (saved)
+{
+    <div class="alert alert-success">
+        Product @(Id is null ? "added" : "updated") successfully.
+    </div>
+    <a class="btn btn-primary" href="/">Back to Inventory</a>
+}
+else
+{
+    <h1>@(Id is null ? "Add Sealed Product" : "Edit Sealed Product")</h1>
+
+    <EditForm Model="product" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Name</label>
+            <InputText class="form-control" @bind-Value="product.Name" />
+        </div>
+        <div class="mb-3">
+            <label>Manufacturer</label>
+            <InputText class="form-control" @bind-Value="product.Manufacturer" />
+        </div>
+        <div class="mb-3">
+            <label>Product Type</label>
+            <InputText class="form-control" @bind-Value="product.ProductType" />
+        </div>
+        <div class="mb-3">
+            <label>Units Per Package</label>
+            <InputNumber class="form-control" @bind-Value="product.UnitsPerPackage" />
+        </div>
+        <div class="mb-3">
+            <label>Price</label>
+            <InputNumber class="form-control" @bind-Value="product.Price" />
+        </div>
+        <div class="mb-3">
+            <label>Quantity</label>
+            <InputNumber class="form-control" @bind-Value="product.Quantity" />
+        </div>
+        <div class="mb-3">
+            <label>Image</label>
+            <InputFile OnChange="OnImageSelected" accept="image/*" />
+            @if (!string.IsNullOrEmpty(imageError))
+            {
+                <div class="alert alert-danger mt-2">@imageError</div>
+            }
+            @if (!string.IsNullOrEmpty(product.ImagePath))
+            {
+                <div><img src="@product.ImagePath" style="height:100px;margin-top:8px" /></div>
+            }
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save</button>
+        <button class="btn btn-secondary" type="button" @onclick="Cancel">Cancel</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private SealedProduct product = new();
+    private IBrowserFile? selectedFile;
+    private string? imageError;
+    private bool saved;
+
+    private static readonly string[] AllowedContentTypes = { "image/png", "image/jpeg", "image/gif", "image/webp" };
+    private static readonly string[] AllowedExtensions = { ".png", ".jpg", ".jpeg", ".gif", ".webp" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id is not null)
+        {
+            var existing = await ProductService.GetByIdAsync(Id.Value);
+            if (existing is not null) product = existing;
+        }
+    }
+
+    private void OnImageSelected(InputFileChangeEventArgs e) => selectedFile = e.File;
+
+    private async Task Save()
+    {
+        imageError = null;
+
+        if (selectedFile is not null)
+        {
+            var ext = Path.GetExtension(selectedFile.Name).ToLowerInvariant();
+
+            if (!AllowedContentTypes.Contains(selectedFile.ContentType) || !AllowedExtensions.Contains(ext))
+            {
+                imageError = "Only PNG, JPG, GIF, or WEBP image files are allowed.";
+                return;
+            }
+
+            var imagesDir = Path.Combine(Env.WebRootPath, "images", "products");
+            Directory.CreateDirectory(imagesDir);
+
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(imagesDir, fileName);
+
+            try
+            {
+                await using var stream = File.Create(filePath);
+                await selectedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream);
+            }
+            catch (IOException)
+            {
+                imageError = "Image file is too large (max 5 MB).";
+                if (File.Exists(filePath)) File.Delete(filePath);
+                return;
+            }
+
+            product.ImagePath = $"/images/products/{fileName}";
+        }
+
+        if (Id is null)
+            await ProductService.CreateAsync(product);
+        else
+            await ProductService.UpdateAsync(product);
+
+        saved = true;
+    }
+
+    private void Cancel() => Nav.NavigateTo("/");
+}

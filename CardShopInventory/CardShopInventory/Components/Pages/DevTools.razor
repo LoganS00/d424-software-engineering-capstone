@@ -1,0 +1,48 @@
+﻿@page "/dev-tools"
+@using CardShopInventory.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IWebHostEnvironment Env
+@rendermode InteractiveServer
+
+<PageTitle>Dev Tools</PageTitle>
+
+@if (!Env.IsDevelopment())
+{
+    <p>Dev tools are only available in the Development environment.</p>
+}
+else
+{
+    <h1>Dev Tools</h1>
+    <p>Wipes all data (cards, admin account, everything) and recreates an empty database. Use this during development/testing only.</p>
+
+    @if (!confirming)
+    {
+        <button class="btn btn-danger" @onclick="() => confirming = true">Wipe Database</button>
+    }
+    else
+    {
+        <p><strong>Are you sure?</strong> This deletes everything, including your admin account.</p>
+        <button class="btn btn-danger" @onclick="WipeDatabase">Yes, wipe it</button>
+        <button class="btn btn-secondary" @onclick="() => confirming = false">Cancel</button>
+    }
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert alert-success mt-3">@message</div>
+    }
+}
+
+@code {
+    private bool confirming;
+    private string? message;
+
+    private async Task WipeDatabase()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+        confirming = false;
+        message = $"Database wiped and recreated at {DateTime.Now:g}. Go to /setup to create a new admin account.";
+    }
+}

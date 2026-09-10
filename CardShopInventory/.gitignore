@@ -1,0 +1,9 @@
+﻿.vs/
+*.user
+*.suo
+[Bb]in/
+[Oo]bj/
+CardShopInventory/cardshop.db
+CardShopInventory/cardshop.db-shm
+CardShopInventory/cardshop.db-wal
+CardShopInventory/wwwroot/images/

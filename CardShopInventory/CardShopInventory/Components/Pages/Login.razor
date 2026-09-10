@@ -1,0 +1,80 @@
+﻿@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using CardShopInventory.Services
+@inject IAdminAccountService AdminAccountService
+@inject NavigationManager Nav
+
+<PageTitle>Admin Login</PageTitle>
+
+<h1>Admin Login</h1>
+
+<EditForm Model="Input" method="post" FormName="Login" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Username</label>
+        <InputText class="form-control" @bind-Value="Input.Username" />
+    </div>
+    <div class="mb-3">
+        <label>Password</label>
+        <InputText type="password" class="form-control" @bind-Value="Input.Password" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <button class="btn btn-primary" type="submit">Log In</button>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AdminAccountService.AdminExistsAsync())
+        {
+            Nav.NavigateTo("/setup", forceLoad: true);
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        var valid = await AdminAccountService.ValidateCredentialsAsync(Input.Username, Input.Password);
+        if (!valid)
+        {
+            errorMessage = "Invalid username or password.";
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, Input.Username),
+            new(ClaimTypes.Role, "Admin"),
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+
+    private class InputModel
+    {
+        [Required]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+}
