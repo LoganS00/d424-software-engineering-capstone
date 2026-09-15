@@ -13,13 +13,13 @@ public class ReservationService : IReservationService
         _contextFactory = contextFactory;
     }
 
-    public async Task<Reservation> CreateAsync(int cardId, string customerName, string customerContact, int quantity)
+    public async Task<Reservation> CreateAsync(int itemId, string customerName, string customerContact, int quantity)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var reservation = new Reservation
         {
-            CardId = cardId,
+            ItemId = itemId,
             CustomerName = customerName.Trim(),
             CustomerContact = customerContact.Trim(),
             Quantity = quantity
@@ -34,7 +34,7 @@ public class ReservationService : IReservationService
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Reservations
-            .Include(r => r.Card)
+            .Include(r => r.Item)
             .OrderByDescending(r => r.RequestedAt)
             .ToListAsync();
     }

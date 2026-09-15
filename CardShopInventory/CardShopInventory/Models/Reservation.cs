@@ -13,8 +13,8 @@ public class Reservation
 {
     public int Id { get; set; }
 
-    public int CardId { get; set; }
-    public Card? Card { get; set; }
+    public int ItemId { get; set; }
+    public InventoryItem? Item { get; set; }
 
     [Required, StringLength(100)]
     public string CustomerName { get; set; } = string.Empty;

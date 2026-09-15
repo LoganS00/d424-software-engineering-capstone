@@ -1,26 +1,26 @@
-﻿@page "/hold/{CardId:int}"
+﻿@page "/hold/{ItemId:int}"
 @using System.ComponentModel.DataAnnotations
 @using CardShopInventory.Models
 @using CardShopInventory.Services
-@inject ICardService CardService
+@inject IInventoryService InventoryService
 @inject IReservationService ReservationService
 @rendermode InteractiveServer
 
 <PageTitle>Request Hold</PageTitle>
 
-@if (card is null && !notFound)
+@if (item is null && !notFound)
 {
     <p><em>Loading...</em></p>
 }
 else if (notFound)
 {
-    <p>Card not found.</p>
+    <p>Item not found.</p>
     <a href="/">Back to inventory</a>
 }
 else if (submitted)
 {
     <div class="alert alert-success">
-        Your hold request for <strong>@card!.Name</strong> has been submitted. The shop will contact you at
+        Your hold request for <strong>@item!.Name</strong> has been submitted. The shop will contact you at
         <strong>@Input.CustomerContact</strong> to confirm.
     </div>
     <a href="/" class="btn btn-secondary">Back to inventory</a>
@@ -29,13 +29,13 @@ else
 {
     <h1>Request Hold</h1>
     <div class="mb-3">
-        @if (!string.IsNullOrEmpty(card!.ImagePath))
+        @if (!string.IsNullOrEmpty(item!.ImagePath))
         {
-            <img src="@card.ImagePath" style="height:120px" alt="@card.Name" />
+            <img src="@item.ImagePath" style="height:120px" alt="@item.Name" />
         }
-        <h4>@card.Name</h4>
-        <p>@card.SetName #@card.CardNumber &mdash; @card.Condition</p>
-        <p>Price: @card.Price.ToString("C") | In stock: @card.Quantity</p>
+        <h4>@item.Name</h4>
+        <p>@item.GetDetails()</p>
+        <p>Price: @item.Price.ToString("C") | In stock: @item.Quantity</p>
     </div>
 
     <EditForm Model="Input" OnValidSubmit="Submit">
@@ -66,9 +66,9 @@ else
 }
 
 @code {
-    [Parameter] public int CardId { get; set; }
+    [Parameter] public int ItemId { get; set; }
 
-    private Card? card;
+    private InventoryItem? item;
     private bool notFound;
     private bool submitted;
     private string? errorMessage;
@@ -76,8 +76,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        card = await CardService.GetByIdAsync(CardId);
-        if (card is null)
+        item = await InventoryService.GetByIdAsync(ItemId);
+        if (item is null)
         {
             notFound = true;
         }
@@ -85,15 +85,15 @@ else
 
     private async Task Submit()
     {
-        if (card is null) return;
+        if (item is null) return;
 
-        if (Input.Quantity > card.Quantity)
+        if (Input.Quantity > item.Quantity)
         {
-            errorMessage = $"Only {card.Quantity} in stock.";
+            errorMessage = $"Only {item.Quantity} in stock.";
             return;
         }
 
-        await ReservationService.CreateAsync(card.Id, Input.CustomerName, Input.CustomerContact, Input.Quantity);
+        await ReservationService.CreateAsync(item.Id, Input.CustomerName, Input.CustomerContact, Input.Quantity);
         submitted = true;
     }
 

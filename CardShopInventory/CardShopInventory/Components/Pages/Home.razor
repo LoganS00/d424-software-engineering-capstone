@@ -63,10 +63,7 @@ else
                     <td>@item.Price.ToString("C")</td>
                     <td>@item.Quantity</td>
                     <td>
-                        @if (item is Card)
-                        {
-                            <a class="btn btn-sm btn-outline-primary" href="/hold/@item.Id">Request Hold</a>
-                        }
+                        <a class="btn btn-sm btn-outline-primary" href="/hold/@item.Id">Request Hold</a>
                     </td>
                     <td>
                         <AuthorizeView>

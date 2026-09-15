@@ -43,4 +43,10 @@ public class InventoryService : IInventoryService
             .OrderBy(i => i.Name)
             .ToList();
     }
+
+    public async Task<InventoryItem?> GetByIdAsync(int id)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.InventoryItems.FindAsync(id);
+    }
 }
