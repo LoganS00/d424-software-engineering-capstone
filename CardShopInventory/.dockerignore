@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/.vs/
+CardShopInventory/cardshop.db
+CardShopInventory/cardshop.db-shm
+CardShopInventory/cardshop.db-wal
+CardShopInventory/wwwroot/images/
+CardShopInventory.Tests/
+.git/
